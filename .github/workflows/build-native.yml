@@ -1,0 +1,100 @@
+name: Build Native Binaries
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-native:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup GraalVM
+      uses: graalvm/setup-graalvm@v1
+      with:
+        version: '21'
+        java-version: '21'
+        components: 'native-image'
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Setup Gradle
+      uses: gradle/gradle-build-action@v2
+    
+    - name: Build Native Binary
+      run: ./gradlew :desktopApp:nativeCompile
+    
+    - name: Rename Binary (Unix)
+      if: runner.os != 'Windows'
+      run: |
+        OS_NAME=$(echo "${{ runner.os }}" | tr '[:upper:]' '[:lower:]')
+        cp desktopApp/build/native/nativeCompile/math-solver math-solver-$OS_NAME
+    
+    - name: Rename Binary (Windows)
+      if: runner.os == 'Windows'
+      run: |
+        Copy-Item desktopApp\build\native\nativeCompile\math-solver.exe math-solver-windows.exe
+    
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: math-solver-${{ runner.os }}
+        path: math-solver-*
+    
+    - name: Release
+      uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        files: math-solver-*
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  
+  build-packages:
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            task: packageDmg
+            artifact: '*.dmg'
+          - os: ubuntu-latest
+            task: packageDeb
+            artifact: '*.deb'
+          - os: windows-latest
+            task: packageMsi
+            artifact: '*.msi'
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup JDK
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+    
+    - name: Setup Gradle
+      uses: gradle/gradle-build-action@v2
+    
+    - name: Build Package
+      run: ./gradlew :desktopApp:${{ matrix.task }}
+    
+    - name: Upload Package
+      uses: actions/upload-artifact@v4
+      with:
+        name: package-${{ runner.os }}
+        path: desktopApp/build/compose/binaries/main/**/${{ matrix.artifact }}
+    
+    - name: Release Package
+      uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        files: desktopApp/build/compose/binaries/main/**/${{ matrix.artifact }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
