@@ -42,6 +42,8 @@ actual fun proveExpression(expression: String): String {
  * - Geometric problems (e.g., annulus area)
  * - Arithmetic word problems
  * - Calculus problems (derivatives, integrals)
+ * - Discrete mathematics (combinatorics, graph theory, set theory)
+ * - Real analysis (limits, sequences, series)
  * Leverages Symja for symbolic computation of identified expressions.
  */
 actual fun solveWordProblem(problem: String): String {
@@ -49,6 +51,51 @@ actual fun solveWordProblem(problem: String): String {
         val util = ExprEvaluator()
         
         val symjaExpression = when {
+            // Discrete Mathematics
+            problem.contains("permutation", ignoreCase = true) -> {
+                val numbers = Regex("\\d+").findAll(problem).map { it.value.toInt() }.toList()
+                if (numbers.size >= 2) "Permutations[${numbers[0]}, ${numbers[1]}]" 
+                else "Permutations[n, r]"
+            }
+            problem.contains("combination", ignoreCase = true) -> {
+                val numbers = Regex("\\d+").findAll(problem).map { it.value.toInt() }.toList()
+                if (numbers.size >= 2) "Binomial[${numbers[0]}, ${numbers[1]}]" 
+                else "Binomial[n, r]"
+            }
+            problem.contains("factorial", ignoreCase = true) -> {
+                val numbers = Regex("\\d+").findAll(problem).map { it.value.toInt() }.toList()
+                if (numbers.isNotEmpty()) "${numbers[0]}!" else "n!"
+            }
+            problem.contains("set", ignoreCase = true) && problem.contains("union", ignoreCase = true) -> {
+                "Union[A, B]"
+            }
+            problem.contains("set", ignoreCase = true) && problem.contains("intersection", ignoreCase = true) -> {
+                "Intersection[A, B]"
+            }
+            
+            // Real Analysis
+            problem.contains("sequence", ignoreCase = true) && problem.contains("limit", ignoreCase = true) -> {
+                val funcMatch = Regex("sequence\\s+(.+?)\\s+as\\s+n", RegexOption.IGNORE_CASE).find(problem)
+                if (funcMatch != null) {
+                    val func = funcMatch.groupValues[1].trim()
+                    "Limit[$func, n->Infinity]"
+                } else "Limit[a_n, n->Infinity]"
+            }
+            problem.contains("series", ignoreCase = true) && problem.contains("converge", ignoreCase = true) -> {
+                val funcMatch = Regex("series\\s+(.+?)(?:\\s+converge|$)", RegexOption.IGNORE_CASE).find(problem)
+                if (funcMatch != null) {
+                    val func = funcMatch.groupValues[1].trim()
+                    "Sum[$func, {n, 1, Infinity}]"
+                } else "Sum[a_n, {n, 1, Infinity}]"
+            }
+            problem.contains("supremum", ignoreCase = true) || problem.contains("least upper bound", ignoreCase = true) -> {
+                "Max[Set]"
+            }
+            problem.contains("infimum", ignoreCase = true) || problem.contains("greatest lower bound", ignoreCase = true) -> {
+                "Min[Set]"
+            }
+            
+            // Existing patterns
             problem.contains("annulus", ignoreCase = true) && problem.contains("area", ignoreCase = true) -> {
                 "Integrate[2*Pi*rho, {rho, r, R}]"
             }

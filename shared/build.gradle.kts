@@ -8,6 +8,22 @@ kotlin {
     androidTarget()
 
     jvm("desktop")
+    
+    listOf(
+        iosX64(),
+        iosArm64(),
+        iosSimulatorArm64()
+    ).forEach {
+        it.binaries.framework {
+            baseName = "shared"
+            isStatic = true
+        }
+    }
+    
+    wasmJs {
+        browser()
+        binaries.executable()
+    }
 
     sourceSets {
         val commonMain by getting {
@@ -31,6 +47,11 @@ kotlin {
             dependencies {
                 implementation(compose.desktop.common)
                 implementation("org.matheclipse:matheclipse-core:3.0.0")
+            }
+        }
+        val wasmJsMain by getting {
+            dependencies {
+                implementation(compose.runtime)
             }
         }
     }
