@@ -1,0 +1,46 @@
+# Gradle
+*.iml
+.gradle
+/local.properties
+/.idea
+.DS_Store
+build/
+/captures
+.externalNativeBuild
+.cxx
+
+# iOS
+iosApp/Podfile.lock
+iosApp/Pods/*
+iosApp/iosApp.xcworkspace/*
+iosApp/iosApp.xcodeproj/*
+!iosApp/iosApp.xcodeproj/project.pbxproj
+shared/shared.podspec
+
+# macOS
+*.DS_Store
+.AppleDouble
+.LSOverride
+
+# IDE
+.idea/
+*.iws
+*.ipr
+out/
+
+# Logs
+*.log
+
+# Temporary files
+*.swp
+*.swo
+*~
+.tmp/
+temp/
+
+# OS specific
+Thumbs.db
+Desktop.ini
+
+# GitHub Copilot reference files
+.github-copilot/
