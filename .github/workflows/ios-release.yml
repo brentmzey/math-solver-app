@@ -1,0 +1,157 @@
+name: iOS Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+    branches:
+      - main
+    paths:
+      - 'iosApp/**'
+      - 'shared/**'
+      - '**.gradle.kts'
+      - 'gradle.properties'
+  workflow_dispatch:
+
+jobs:
+  build-ios:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+    
+    - name: Setup Gradle
+      uses: gradle/gradle-build-action@v2
+      with:
+        cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+    
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+    
+    # Build Kotlin/Native framework for iOS
+    - name: Build iOS Framework
+      run: ./gradlew :shared:linkDebugFrameworkIosArm64 --no-daemon
+    
+    # Setup Xcode (iOS project would typically be in iosApp/)
+    - name: Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: latest-stable
+    
+    # Note: This assumes you have an Xcode project/workspace
+    # You'll need to create proper iOS app structure with Xcode project
+    - name: Check for Xcode Project
+      id: check_xcode
+      run: |
+        if [ -d "iosApp/iosApp.xcodeproj" ] || [ -d "iosApp/iosApp.xcworkspace" ]; then
+          echo "exists=true" >> $GITHUB_OUTPUT
+        else
+          echo "exists=false" >> $GITHUB_OUTPUT
+          echo "⚠️ No Xcode project found. You need to set up iOS app with Xcode."
+          echo "This workflow is ready but needs an Xcode project to build."
+        fi
+    
+    # Install CocoaPods if needed
+    - name: Install CocoaPods
+      if: steps.check_xcode.outputs.exists == 'true'
+      run: |
+        cd iosApp
+        if [ -f "Podfile" ]; then
+          pod install
+        fi
+    
+    # Build iOS app (simulator build for testing)
+    - name: Build iOS Simulator
+      if: steps.check_xcode.outputs.exists == 'true'
+      run: |
+        xcodebuild -project iosApp/iosApp.xcodeproj \
+          -scheme iosApp \
+          -sdk iphonesimulator \
+          -configuration Debug \
+          -destination 'platform=iOS Simulator,name=iPhone 15' \
+          clean build
+    
+    # For release builds with signing
+    - name: Import Certificate
+      if: startsWith(github.ref, 'refs/tags/') && steps.check_xcode.outputs.exists == 'true' && env.IOS_CERTIFICATE != ''
+      env:
+        IOS_CERTIFICATE: ${{ secrets.IOS_CERTIFICATE_BASE64 }}
+        IOS_CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
+      run: |
+        echo "$IOS_CERTIFICATE" | base64 -d > certificate.p12
+        security create-keychain -p actions build.keychain
+        security default-keychain -s build.keychain
+        security unlock-keychain -p actions build.keychain
+        security import certificate.p12 -k build.keychain -P "$IOS_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+        security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k actions build.keychain
+    
+    - name: Import Provisioning Profile
+      if: startsWith(github.ref, 'refs/tags/') && steps.check_xcode.outputs.exists == 'true' && env.IOS_PROVISION != ''
+      env:
+        IOS_PROVISION_PROFILE: ${{ secrets.IOS_PROVISION_PROFILE_BASE64 }}
+      run: |
+        mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+        echo "$IOS_PROVISION_PROFILE" | base64 -d > ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision
+    
+    # Build archive for App Store
+    - name: Build iOS Archive
+      if: startsWith(github.ref, 'refs/tags/') && steps.check_xcode.outputs.exists == 'true' && env.IOS_CERTIFICATE != ''
+      env:
+        IOS_CERTIFICATE: ${{ secrets.IOS_CERTIFICATE_BASE64 }}
+      run: |
+        xcodebuild -project iosApp/iosApp.xcodeproj \
+          -scheme iosApp \
+          -sdk iphoneos \
+          -configuration Release \
+          -archivePath $PWD/build/iosApp.xcarchive \
+          clean archive
+    
+    # Export IPA
+    - name: Export IPA
+      if: startsWith(github.ref, 'refs/tags/') && steps.check_xcode.outputs.exists == 'true' && env.IOS_CERTIFICATE != ''
+      env:
+        IOS_CERTIFICATE: ${{ secrets.IOS_CERTIFICATE_BASE64 }}
+      run: |
+        xcodebuild -exportArchive \
+          -archivePath $PWD/build/iosApp.xcarchive \
+          -exportOptionsPlist iosApp/ExportOptions.plist \
+          -exportPath $PWD/build
+    
+    - name: Upload IPA
+      if: startsWith(github.ref, 'refs/tags/') && steps.check_xcode.outputs.exists == 'true'
+      uses: actions/upload-artifact@v4
+      with:
+        name: ios-app
+        path: build/*.ipa
+    
+    # Attach to GitHub Release
+    - name: Release IPA
+      uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/') && steps.check_xcode.outputs.exists == 'true'
+      with:
+        files: build/*.ipa
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    
+    # Optional: Upload to TestFlight
+    - name: Upload to TestFlight
+      if: startsWith(github.ref, 'refs/tags/') && steps.check_xcode.outputs.exists == 'true' && env.APPLE_API_KEY != ''
+      env:
+        APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+        APPLE_API_ISSUER_ID: ${{ secrets.APPLE_API_ISSUER_ID }}
+        APPLE_API_KEY: ${{ secrets.APPLE_API_KEY_BASE64 }}
+      run: |
+        echo "$APPLE_API_KEY" | base64 -d > AuthKey.p8
+        xcrun altool --upload-app \
+          --type ios \
+          --file build/*.ipa \
+          --apiKey $APPLE_API_KEY_ID \
+          --apiIssuer $APPLE_API_ISSUER_ID
