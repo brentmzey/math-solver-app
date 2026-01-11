@@ -4,6 +4,13 @@ on:
   push:
     tags:
       - 'v*'
+    branches:
+      - main
+    paths:
+      - 'desktopApp/**'
+      - 'shared/**'
+      - '**.gradle.kts'
+      - 'gradle.properties'
   workflow_dispatch:
 
 jobs:

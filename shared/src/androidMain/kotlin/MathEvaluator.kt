@@ -13,14 +13,14 @@ actual fun evaluateExpression(expression: String): String {
         val isValidExpression = cleanExpression.any { it in supportedOperators || it.isDigit() || it == '.' || it == '(' || it == ')' }
 
         if (!isValidExpression) {
-            return "Error: Only basic arithmetic operations and numbers are supported for now."
+            "Error: Only basic arithmetic operations and numbers are supported for now."
+        } else {
+            val expr = ExpressionBuilder(cleanExpression).build()
+            val result = expr.evaluate()
+            result.toString()
         }
-
-        val expr = ExpressionBuilder(cleanExpression).build()
-        val result = expr.evaluate()
-        return result.toString()
     } catch (e: Exception) {
-        return "Error: ${e.message ?: "Invalid expression"}"
+        "Error: ${e.message ?: "Invalid expression"}"
     }
 }
 

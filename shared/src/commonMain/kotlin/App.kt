@@ -39,6 +39,7 @@ fun App() {
         var wordProblemResult by remember { mutableStateOf("") }
         var useOnlineMode by remember { mutableStateOf(false) }
         var apiEndpoint by remember { mutableStateOf("") }
+        var apiKey by remember { mutableStateOf("") }
         val coroutineScope = rememberCoroutineScope()
 
         Column(
@@ -65,6 +66,12 @@ fun App() {
                     label = { Text("API Endpoint (optional)") },
                     modifier = Modifier.fillMaxWidth()
                 )
+                TextField(
+                    value = apiKey,
+                    onValueChange = { apiKey = it },
+                    label = { Text("API Key") },
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
             TextField(
                 value = expression,
@@ -76,7 +83,7 @@ fun App() {
                 onClick = {
                     coroutineScope.launch {
                         result = if (useOnlineMode && isNetworkAvailable()) {
-                            val config = SolverConfig(SolverMode.ONLINE, apiEndpoint, "")
+                            val config = SolverConfig(SolverMode.ONLINE, apiEndpoint, apiKey)
                             solveOnline(expression, config)
                         } else {
                             evaluateExpression(expression)
@@ -99,7 +106,7 @@ fun App() {
                 onClick = {
                     coroutineScope.launch {
                         proofResult = if (useOnlineMode && isNetworkAvailable()) {
-                            val config = SolverConfig(SolverMode.ONLINE, apiEndpoint, "")
+                            val config = SolverConfig(SolverMode.ONLINE, apiEndpoint, apiKey)
                             solveOnline("Prove: $proofRequest", config)
                         } else {
                             proveExpression(proofRequest)
@@ -122,7 +129,7 @@ fun App() {
                 onClick = {
                     coroutineScope.launch {
                         wordProblemResult = if (useOnlineMode && isNetworkAvailable()) {
-                            val config = SolverConfig(SolverMode.ONLINE, apiEndpoint, "")
+                            val config = SolverConfig(SolverMode.ONLINE, apiEndpoint, apiKey)
                             solveOnline(wordProblem, config)
                         } else {
                             solveWordProblem(wordProblem)

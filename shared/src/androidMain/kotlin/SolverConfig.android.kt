@@ -1,6 +1,8 @@
+import android.Manifest
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import androidx.annotation.RequiresPermission
 
 private var appContext: Context? = null
 
@@ -8,6 +10,7 @@ fun initializeContext(context: Context) {
     appContext = context
 }
 
+@RequiresPermission(Manifest.permission.ACCESS_NETWORK_STATE)
 actual fun detectBestSolverMode(problemComplexity: ProblemComplexity): SolverMode {
     return if (isNetworkAvailable() && problemComplexity in listOf(
         ProblemComplexity.DISCRETE_MATH,
@@ -31,6 +34,7 @@ actual suspend fun solveOnline(problem: String, config: SolverConfig): String {
     }
 }
 
+@RequiresPermission(Manifest.permission.ACCESS_NETWORK_STATE)
 actual fun isNetworkAvailable(): Boolean {
     val context = appContext ?: return false
     val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager

@@ -1,3 +1,13 @@
+import io.ktor.client.request.headers
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
+import io.ktor.client.statement.bodyAsText
+import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
+import kotlinx.coroutines.delay
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.encodeToString
+
 actual fun detectBestSolverMode(problemComplexity: ProblemComplexity): SolverMode {
     return if (isNetworkAvailable() && problemComplexity in listOf(
         ProblemComplexity.DISCRETE_MATH,
@@ -11,14 +21,31 @@ actual fun detectBestSolverMode(problemComplexity: ProblemComplexity): SolverMod
 }
 
 actual suspend fun solveOnline(problem: String, config: SolverConfig): String {
+    val client = createHttpClient()
+
+    val request = OpenAiRequest(
+        model = "gpt-3.5-turbo",
+        messages = listOf(Message("user", "Solve the following math problem: $problem")),
+        maxTokens = 100,
+        temperature = 0.7
+    )
+
     return try {
-        // Placeholder for actual HTTP API call to OpenAI/Anthropic/etc
-        // Users should implement this with their preferred API
-        "Online solving requires API implementation. Please configure API endpoint and key.\n" +
-        "Problem detected: ${classifyProblem(problem)}\n" +
-        "Falling back to offline mode: ${evaluateExpression(problem)}"
+        val response = client.post(config.apiEndpoint.ifEmpty { "https://api.openai.com/v1/chat/completions" }) {
+            headers {
+                append(HttpHeaders.Authorization, "Bearer ${config.apiKey}")
+                append(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+            }
+            setBody(Json.encodeToString(request))
+        }
+
+        val responseBody = response.bodyAsText()
+        val openAiResponse = Json.decodeFromString<OpenAiResponse>(responseBody)
+        openAiResponse.choices.firstOrNull()?.message?.content ?: "No solution found"
     } catch (e: Exception) {
-        "Online solve error: ${e.message}. Using offline mode."
+        "Error calling API: ${e.message}"
+    } finally {
+        client.close()
     }
 }
 

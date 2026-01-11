@@ -2,6 +2,7 @@ plugins {
     kotlin("multiplatform")
     id("com.android.library")
     id("org.jetbrains.compose")
+    kotlin("plugin.serialization") version "1.9.23"
 }
 
 kotlin {
@@ -19,11 +20,6 @@ kotlin {
             isStatic = true
         }
     }
-    
-    wasmJs {
-        browser()
-        binaries.executable()
-    }
 
     sourceSets {
         val commonMain by getting {
@@ -33,6 +29,10 @@ kotlin {
                 implementation(compose.material)
                 @OptIn(org.jetbrains.compose.ExperimentalComposeLibrary::class)
                 implementation(compose.components.resources)
+
+                implementation("io.ktor:ktor-client-core:2.3.10")
+                implementation("io.ktor:ktor-client-content-negotiation:2.3.10")
+                implementation("io.ktor:ktor-serialization-kotlinx-json:2.3.10")
             }
         }
         val androidMain by getting {
@@ -41,17 +41,26 @@ kotlin {
                 api("androidx.appcompat:appcompat:1.6.1")
                 api("androidx.core:core-ktx:1.10.1")
                 implementation("net.objecthunter:exp4j:0.4.8")
+                implementation("io.ktor:ktor-client-android:2.3.10")
             }
         }
         val desktopMain by getting {
             dependencies {
                 implementation(compose.desktop.common)
                 implementation("org.matheclipse:matheclipse-core:3.0.0")
+                implementation("io.ktor:ktor-client-cio:2.3.10")
             }
         }
-        val wasmJsMain by getting {
+        val iosX64Main by getting
+        val iosArm64Main by getting
+        val iosSimulatorArm64Main by getting
+        val iosMain by creating {
+            dependsOn(commonMain)
+            iosX64Main.dependsOn(this)
+            iosArm64Main.dependsOn(this)
+            iosSimulatorArm64Main.dependsOn(this)
             dependencies {
-                implementation(compose.runtime)
+                implementation("io.ktor:ktor-client-darwin:2.3.10")
             }
         }
     }

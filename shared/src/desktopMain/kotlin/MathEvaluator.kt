@@ -8,9 +8,9 @@ actual fun evaluateExpression(expression: String): String {
     return try {
         val util = ExprEvaluator()
         val result = util.eval(expression)
-        "The value of the closed loop integral is: ${result.toString()}"
+        "Result: ${result.toString()}"
     } catch (e: Exception) {
-        "Error solving with Green's Theorem: ${e.message ?: "An error occurred"}"
+        "Error evaluating expression: ${e.message ?: "An error occurred"}"
     }
 }
 
