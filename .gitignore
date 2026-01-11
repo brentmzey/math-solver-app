@@ -44,3 +44,8 @@ Desktop.ini
 
 # GitHub Copilot reference files
 .github-copilot/
+
+# Android signing
+release.keystore
+keystore.base64.txt
+.keystore-credentials.txt
